@@ -15,6 +15,7 @@
 // Thread for receiving messages from a client
 void *recv_func(void *arg) {
     int connfd = *(int *)arg;
+    free(arg);  // free memory passed
     char buff[MAX];
 
     while (1) {
@@ -34,11 +35,13 @@ void *recv_func(void *arg) {
 // Thread for sending messages to a client
 void *send_func(void *arg) {
     int connfd = *(int *)arg;
+    free(arg);  // free memory passed
     char buff[MAX];
 
     while (1) {
         bzero(buff, MAX);
         fgets(buff, MAX, stdin);
+        buff[strcspn(buff, "\n")] = 0; // remove newline
         write(connfd, buff, strlen(buff));
 
         if (strncmp(buff, "exit", 4) == 0) {
@@ -55,8 +58,14 @@ void *client_handler(void *arg) {
     free(arg);
 
     pthread_t recv_thread, send_thread;
-    pthread_create(&recv_thread, NULL, recv_func, &connfd);
-    pthread_create(&send_thread, NULL, send_func, &connfd);
+
+    int *recv_fd = malloc(sizeof(int));
+    int *send_fd = malloc(sizeof(int));
+    *recv_fd = connfd;
+    *send_fd = connfd;
+
+    pthread_create(&recv_thread, NULL, recv_func, recv_fd);
+    pthread_create(&send_thread, NULL, send_func, send_fd);
 
     pthread_join(recv_thread, NULL);
     pthread_cancel(send_thread);
